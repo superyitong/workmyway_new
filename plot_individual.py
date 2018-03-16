@@ -4,11 +4,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 
-from workmyway_methods import (fill_gaps, office_hour, classify_a_day, convert_to_epoch_end,get_day_stats,retrieve, correct_id, plot_a_day, parse_date,
-parse_datetime,clean_data, convert_reminder_type)
+from workmyway_methods import (fill_gaps, office_hour, drop_non_office_hour, classify_a_day, classify_cup_movement, 
+                                 convert_to_epoch_end,get_day_stats,get_day_drink_stats, retrieve, correct_id, plot_a_day, parse_date,
+                                 parse_datetime,clean_data, convert_reminder_type)
 
 #####  read data and conver data types ########
-raw_count = pd.read_csv("./data/smartcup_server_stepreading.csv")
+raw_count = pd.read_csv("./data/smartcup_server_stepreading2.csv")
 raw_count['date']=raw_count['timestamp'].apply(parse_date)
 raw_count = raw_count[raw_count.date>datetime(2017,10,25)]
 raw_count['current_epoch_end'] = raw_count['timestamp'].apply(convert_to_epoch_end)
@@ -20,8 +21,6 @@ CPE_df.rename(columns = {'id':'CPE'},inplace=True)
 ## delete/replace some datea with messed-up user_id 
 CPE_df = clean_data(CPE_df)
 # save CPE file for data backup 
-#CPE_df['office_hour']=CPE_df['current_epoch_end'].apply(office_hour)
-#CPE_df= CPE_df[CPE_df['office_hour']==True].drop(['office_hour'],axis=1) 
 CPE_df.to_csv('CPE.csv',sep=',',index=False)
 
 
@@ -30,38 +29,47 @@ connection_status['date']=connection_status['timestamp'].apply(parse_date)
 connection_status = connection_status[connection_status.date>datetime(2017,10,25)]
 connection_status['current_epoch_end'] = connection_status['timestamp'].apply(convert_to_epoch_end)
 connection_status['timestamp']=connection_status['timestamp'].apply(parse_datetime)
-connection_status['office_hour']=connection_status['timestamp'].apply(office_hour)
-connection_status= connection_status[connection_status['office_hour']==True] 
-connection_status.drop(['id','appID','expected','office_hour'],axis =1,inplace=True) # timestamp, connected(t/f), deviceType, user_id, date
-
+connection_status.drop(['id','appID','expected'],axis =1,inplace=True) # timestamp, connected(t/f), deviceType, user_id, date
+connection_status['user_id'] = connection_status['user_id'].apply(correct_id)
 
 reminder= pd.read_csv('./data/smartcup_server_alert.csv')
 reminder['date']=reminder['timestamp'].apply(parse_date)
 reminder = reminder[reminder.date>datetime(2017,10,25)]
 reminder['timestamp']=reminder['timestamp'].apply(parse_datetime)
-#reminder['office_hour']= reminder['timestamp'].apply(office_hour)
-#reminder = reminder[reminder['office_hour']==True]
-#reminder.drop(['id','appID','office_hour'],axis =1,inplace=True) # timestamp,action (none(0,, user_id,date
-
+reminder.drop(['id','appID'],axis =1,inplace=True) # timestamp,action (none(0,, user_id,date
+reminder['user_id'] = reminder['user_id'].apply(correct_id)
 
 
 tracking_status = pd.read_csv('./data/smartcup_server_trackingstatus.csv')
 tracking_status['date']=tracking_status['timestamp'].apply(parse_date)
 tracking_status =tracking_status[tracking_status.date>datetime(2017,10,25)]
-tracking_status['timestamp']=tracking_status['timestamp'].apply(parse_datetime) 
+tracking_status['timestamp']=tracking_status['timestamp'].apply(parse_datetime)
 tracking_status.drop(['id','appID'],axis =1,inplace=True) # timestamp, status,user_id, date
 tracking_status['user_id'] = tracking_status['user_id'].apply(correct_id)
 tracking_status['current_epoch_end']=tracking_status['timestamp']
+tracking_status['user_id'] = tracking_status['user_id'].apply(correct_id)
 #tracking_status = clean_data(tracking_status)
 
 
 auth_user_df=pd.read_csv('./data/auth_user.csv')
 dict_account = auth_user_df.set_index('id')['username'].to_dict()
 
+CPE_df['office_hour']=CPE_df['current_epoch_end'].apply(office_hour)
+CPE_df= drop_non_office_hour(CPE_df,'current_epoch_end')
+connection_status= drop_non_office_hour(connection_status,'timestamp')
+reminder= drop_non_office_hour(reminder,'timestamp')
+
+# replace this user54's phone with 58 and use phone 54 for debugging after 3-14
+CPE_df.loc[((CPE_df['user_id']==54) & (CPE_df['date']<'2018-03-15')),'user_id']=58
+connection_status.loc[((connection_status['user_id']==54) & (connection_status['date']<'2018-03-15')),'user_id']=58
+tracking_status.loc[((tracking_status['user_id']==54) & (tracking_status['date']<'2018-03-15')),'user_id']=58
+reminder.loc[((reminder['user_id']==54) & (reminder['date']<'2018-03-15')),'user_id']=58
+
+
 
 #%%
-user_id = 52
-date = '2018-3-13'
+user_id = 54
+date = '2018-3-16'
 username = dict_account[user_id]
 PxDx_tracking_status = tracking_status[(tracking_status['user_id']==user_id)&(tracking_status['date']==date)]
 PxDx_tracking_status['start_tracking']= np.where(PxDx_tracking_status['status']=='t',1.5,np.nan)

@@ -9,7 +9,7 @@ from workmyway_methods import (fill_gaps, office_hour, drop_non_office_hour, cla
                                  parse_datetime,clean_data, convert_reminder_type)
 
 #####  read data and conver data types ########
-raw_count = pd.read_csv("./data/smartcup_server_stepreading.csv")
+raw_count = pd.read_csv("./data/smartcup_server_stepreading2.csv")
 raw_count['date']=raw_count['timestamp'].apply(parse_date)
 raw_count = raw_count[raw_count.date>datetime(2017,10,25)]
 raw_count['current_epoch_end'] = raw_count['timestamp'].apply(convert_to_epoch_end)
@@ -30,15 +30,14 @@ connection_status = connection_status[connection_status.date>datetime(2017,10,25
 connection_status['current_epoch_end'] = connection_status['timestamp'].apply(convert_to_epoch_end)
 connection_status['timestamp']=connection_status['timestamp'].apply(parse_datetime)
 connection_status.drop(['id','appID','expected'],axis =1,inplace=True) # timestamp, connected(t/f), deviceType, user_id, date
-
+connection_status['user_id'] = connection_status['user_id'].apply(correct_id)
 
 reminder= pd.read_csv('./data/smartcup_server_alert.csv')
 reminder['date']=reminder['timestamp'].apply(parse_date)
 reminder = reminder[reminder.date>datetime(2017,10,25)]
 reminder['timestamp']=reminder['timestamp'].apply(parse_datetime)
-
 reminder.drop(['id','appID'],axis =1,inplace=True) # timestamp,action (none(0,, user_id,date
-
+reminder['user_id'] = reminder['user_id'].apply(correct_id)
 
 
 tracking_status = pd.read_csv('./data/smartcup_server_trackingstatus.csv')
@@ -48,6 +47,7 @@ tracking_status['timestamp']=tracking_status['timestamp'].apply(parse_datetime)
 tracking_status.drop(['id','appID'],axis =1,inplace=True) # timestamp, status,user_id, date
 tracking_status['user_id'] = tracking_status['user_id'].apply(correct_id)
 tracking_status['current_epoch_end']=tracking_status['timestamp']
+tracking_status['user_id'] = tracking_status['user_id'].apply(correct_id)
 #tracking_status = clean_data(tracking_status)
 
 
@@ -59,11 +59,16 @@ CPE_df= drop_non_office_hour(CPE_df,'current_epoch_end')
 connection_status= drop_non_office_hour(connection_status,'timestamp')
 reminder= drop_non_office_hour(reminder,'timestamp')
 
+# replace this user54's phone with 58 and use phone 54 for debugging after 3-14
+CPE_df.loc[((CPE_df['user_id']==54) & (CPE_df['date']<'2018-03-15')),'user_id']=58
+connection_status.loc[((connection_status['user_id']==54) & (connection_status['date']<'2018-03-15')),'user_id']=58
+tracking_status.loc[((tracking_status['user_id']==54) & (tracking_status['date']<'2018-03-15')),'user_id']=58
+reminder.loc[((reminder['user_id']==54) & (reminder['date']<'2018-03-15')),'user_id']=58
 
 
 #%%
-user_id =51
-date = '2018-3-14'
+user_id =54
+date = '2018-3-12'
 username = dict_account[user_id]
 PxDx_tracking_status = tracking_status[(tracking_status['user_id']==user_id)&(tracking_status['date']==date)]
 PxDx_tracking_status['start_tracking']= np.where(PxDx_tracking_status['status']=='t',1.5,np.nan)
@@ -128,7 +133,7 @@ get_day_drink_stats(df_episodes_cup)
 tracking_summary_by_day = pd.DataFrame()
 full_alert_df =pd.DataFrame() 
 
-for user_id in [30,39,41,50,51,52,53,54,55]:#30,31,32,35,37,38,39,41,42
+for user_id in [30,39,41,50,51,52,53,58,55]:#30,31,32,35,37,38,39,41,42
     unique_date_list1 = CPE_df[(CPE_df['user_id']==user_id)& (CPE_df['deviceType']==0)].date.unique()
     unique_date_list2 = tracking_status[(tracking_status['user_id']==user_id)].date.unique()
     unique_date_set = pd.to_datetime((np.union1d(unique_date_list1,unique_date_list2)))
@@ -240,3 +245,9 @@ tracking_summary_by_day.applymap(lambda x: str(x)[7:] if type(x)==pd._libs.tslib
 summary_of_valid_days = tracking_summary_by_day[(tracking_summary_by_day['daily valid']>timedelta(hours = 3))]
 summary_of_valid_days.applymap(lambda x: str(x)[7:] if type(x)==pd._libs.tslib.Timedelta else x).to_csv("../output/valid_days_only.csv",sep=',',index=False)
 full_alert_df.applymap(lambda x: str(x)[7:] if type(x)==pd._libs.tslib.Timedelta else ('' if pd.isnull(x) else x)).to_csv("../output/reminders.csv",sep=',',index=False)
+#%%
+
+
+
+
+

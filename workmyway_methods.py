@@ -68,6 +68,7 @@ def clean_data(CPE_df):
     CPE_df['filter7']=(CPE_df['user_id']==39)&((CPE_df['date']=='2017-11-23')|(('2017-11-29'<CPE_df['date'])&(CPE_df['date'] < '2017-12-07')))
     CPE_df = CPE_df[(CPE_df ["filter2"]==False)&(CPE_df['filter1']== False)&(CPE_df['filter3']== False)&(CPE_df['filter4']== False)&(CPE_df['filter5']==False)&(CPE_df['filter6']==False)&(CPE_df['filter7']==False)&(CPE_df['filter8']==False)&(CPE_df['filter9']==False)].drop(['filter2','filter1', 'filter3','filter4','filter5','filter6','filter7','filter8','filter9'],axis = 1)   
     CPE_df=CPE_df.reset_index(drop=True)
+    
     return CPE_df
 
 
