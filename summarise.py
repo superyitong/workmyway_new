@@ -9,7 +9,7 @@ from workmyway_methods import (fill_gaps, office_hour, drop_non_office_hour, cla
                                  parse_datetime,clean_data, convert_reminder_type)
 
 #####  read data and conver data types ########
-raw_count = pd.read_csv("./data/smartcup_server_stepreading2.csv")
+raw_count = pd.read_csv("./data/smartcup_server_stepreading.csv")
 raw_count['date']=raw_count['timestamp'].apply(parse_date)
 raw_count = raw_count[raw_count.date>datetime(2017,10,25)]
 raw_count['current_epoch_end'] = raw_count['timestamp'].apply(convert_to_epoch_end)
@@ -67,8 +67,8 @@ reminder.loc[((reminder['user_id']==54) & (reminder['date']<'2018-03-15')),'user
 
 
 #%%
-user_id =54
-date = '2018-3-12'
+user_id =50
+date = '2018-3-23'
 username = dict_account[user_id]
 PxDx_tracking_status = tracking_status[(tracking_status['user_id']==user_id)&(tracking_status['date']==date)]
 PxDx_tracking_status['start_tracking']= np.where(PxDx_tracking_status['status']=='t',1.5,np.nan)
@@ -133,7 +133,7 @@ get_day_drink_stats(df_episodes_cup)
 tracking_summary_by_day = pd.DataFrame()
 full_alert_df =pd.DataFrame() 
 
-for user_id in [30,39,41,50,51,52,53,58,55]:#30,31,32,35,37,38,39,41,42
+for user_id in [30,31,32,35,37,38,39,41,42,50,51,52,53,58,55]:#
     unique_date_list1 = CPE_df[(CPE_df['user_id']==user_id)& (CPE_df['deviceType']==0)].date.unique()
     unique_date_list2 = tracking_status[(tracking_status['user_id']==user_id)].date.unique()
     unique_date_set = pd.to_datetime((np.union1d(unique_date_list1,unique_date_list2)))
@@ -164,6 +164,7 @@ for user_id in [30,39,41,50,51,52,53,58,55]:#30,31,32,35,37,38,39,41,42
             turn_off = np.nan
             
         PxDx_df = retrieve(CPE_df, user_id,0,date)
+        PxDx_df_cup = retrieve(CPE_df, user_id,1,date)
         try:
             first_data_point = pd.to_datetime(PxDx_df.index.values)[0].time()
             last_data_point =pd.to_datetime(PxDx_df.index.values)[-1].time() 
@@ -184,7 +185,7 @@ for user_id in [30,39,41,50,51,52,53,58,55]:#30,31,32,35,37,38,39,41,42
             #####return and print daily stats ######
             day_summary = get_day_stats(df_episodes)
             sum_dict = {**metadata_dict,**day_summary,**baseline}
-            if len(PxDx_df_cup.index.values)>1: # there is cup reading
+            if len(PxDx_df_cup.index.values)>4: # there is cup reading
                 output_cup = classify_cup_movement(fill_gaps(PxDx_df_cup))
                 df_episodes_cup = output_cup[1].rename(columns = {'current_epoch_end':'current_episode_end','label':'transition_to'})
                 df_episodes_cup.reset_index(drop = True,inplace=True)
@@ -239,7 +240,8 @@ tracking_summary_by_day['lite'] = tracking_summary_by_day['lite'].fillna(method=
 tracking_summary_by_day=tracking_summary_by_day[['user_id','start_date','date','day','lite','Turn_ON','first_reading','Turn_OFF','last_reading','daily invalid',
                                                 'daily valid','daily active','daily inactive',
                                                 'total prolonged sitting','total sustained sitting',
-                                                'prolonged sitting events','longest sitting','reminders_triggered','response_latency']]#
+                                                'prolonged sitting events','longest sitting','reminders_triggered','response_latency',
+                                                'drink_event_count','water_break_count','total_water_break_duration','median_drink_frequency']]#
 
 tracking_summary_by_day.applymap(lambda x: str(x)[7:] if type(x)==pd._libs.tslib.Timedelta else (x if type(x) == pd.Series else ('' if pd.isnull(x) else x))).to_csv("../output/tracking_summary_by_day.csv",sep=',',index=False)
 summary_of_valid_days = tracking_summary_by_day[(tracking_summary_by_day['daily valid']>timedelta(hours = 3))]

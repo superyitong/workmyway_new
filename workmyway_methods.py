@@ -221,7 +221,7 @@ def classify_cup_movement(PxDx): #to-do: change duration calculation and plot to
         C1 = 0 # end of walk
         x = 20 # end of drink 
         C0 = 0 # drink detection threshold 
-        P = 10 # walk detection threshold 
+        P = 15 # walk detection threshold 
         Q= 2
         
         df_episodes= pd.DataFrame()
@@ -307,7 +307,6 @@ def get_day_stats(episodes_df):
     
 def get_day_drink_stats(df):
     if type(df) == pd.DataFrame: 
-        grouped = df.groupby('transition_from')['last_episode_duration']
         dict = {'drink_event_count': df[(df['transition_from']==1)]['last_episode_duration'].count(),
             'water_break_count': df[(df['transition_from']==2)]['last_episode_duration'].count()   , 
             'total_water_break_duration': df[(df['transition_from']==2)]['last_episode_duration'].sum(),
