@@ -16,9 +16,11 @@ dict_account = auth_user_df.set_index('id')['username'].to_dict()
 
 # retrieve the df for a certain user, on a certain day, on a certain device
 def convert_to_epoch_end(timestamp):
-    time_string = timestamp [:19]
-    tm = dt.strptime(time_string, '%Y-%m-%d %H:%M:%S')
+    the_date = dt.strptime(timestamp[:10], '%Y-%m-%d')
+    tm = dt.strptime(timestamp [:19], '%Y-%m-%d %H:%M:%S')
     tm = tm - timedelta(seconds=tm.second%15,microseconds=tm.microsecond)+timedelta(seconds=15)
+    if (the_date > dt(2018,3,26,2,0))|(the_date <dt(2017,10,29,2,0)):
+        tm = tm + timedelta(hours=1)
     return tm
 
 def parse_date(timestamp):
@@ -26,8 +28,10 @@ def parse_date(timestamp):
     return (dt.strptime(date_string, '%Y-%m-%d'))
 
 def parse_datetime(timestamp):
-    time_string = timestamp [:19]
-    tm = dt.strptime(time_string, '%Y-%m-%d %H:%M:%S')
+    the_date = dt.strptime(timestamp[:10], '%Y-%m-%d')
+    tm = dt.strptime(timestamp[:19], '%Y-%m-%d %H:%M:%S')
+    if (the_date > dt(2018,3,26,2,0))|(the_date <dt(2017,10,29,2,0)):
+        tm = tm + timedelta(hours=1)
     return tm
 
 def office_hour(timestamp):
@@ -125,8 +129,8 @@ def classify_a_day(PxDx): #to-do: change duration calculation and plot to using 
     if type(PxDx) == pd.DataFrame:
         C1 = 5
         x = 6
-        C0 = 25
-        P = 36
+        C0 = 23
+        P = 25
         Q= 2
         
         df_episodes= pd.DataFrame()

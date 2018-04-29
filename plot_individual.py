@@ -29,6 +29,7 @@ connection_status['date']=connection_status['timestamp'].apply(parse_date)
 connection_status = connection_status[connection_status.date>datetime(2017,10,25)]
 connection_status['current_epoch_end'] = connection_status['timestamp'].apply(convert_to_epoch_end)
 connection_status['timestamp']=connection_status['timestamp'].apply(parse_datetime)
+
 connection_status.drop(['id','appID','expected'],axis =1,inplace=True) # timestamp, connected(t/f), deviceType, user_id, date
 connection_status['user_id'] = connection_status['user_id'].apply(correct_id)
 
@@ -68,8 +69,8 @@ reminder.loc[((reminder['user_id']==54) & (reminder['date']<'2018-03-15')),'user
 
 
 #%%
-user_id = 54
-date = '2018-3-16'
+user_id = 55
+date = '2018-4-16'
 username = dict_account[user_id]
 PxDx_tracking_status = tracking_status[(tracking_status['user_id']==user_id)&(tracking_status['date']==date)]
 PxDx_tracking_status['start_tracking']= np.where(PxDx_tracking_status['status']=='t',1.5,np.nan)

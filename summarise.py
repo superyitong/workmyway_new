@@ -34,7 +34,7 @@ connection_status['user_id'] = connection_status['user_id'].apply(correct_id)
 
 reminder= pd.read_csv('./data/smartcup_server_alert.csv')
 reminder['date']=reminder['timestamp'].apply(parse_date)
-reminder = reminder[reminder.date>datetime(2017,10,25)]
+reminder = reminder[(reminder.date>datetime(2017,10,25))&(reminder.lite=='f')]
 reminder['timestamp']=reminder['timestamp'].apply(parse_datetime)
 reminder.drop(['id','appID'],axis =1,inplace=True) # timestamp,action (none(0,, user_id,date
 reminder['user_id'] = reminder['user_id'].apply(correct_id)
@@ -67,8 +67,8 @@ reminder.loc[((reminder['user_id']==54) & (reminder['date']<'2018-03-15')),'user
 
 
 #%%
-user_id =50
-date = '2018-3-23'
+user_id =51
+date = '2018-4-25'
 username = dict_account[user_id]
 PxDx_tracking_status = tracking_status[(tracking_status['user_id']==user_id)&(tracking_status['date']==date)]
 PxDx_tracking_status['start_tracking']= np.where(PxDx_tracking_status['status']=='t',1.5,np.nan)
@@ -102,7 +102,6 @@ try:
     PxDx_labeled = output[0].rename(columns = {'label':'activity status'})
     #draw(PxDx_labeled,df_episodes,PxDx_tracking_status,username,date)
     plot_a_day(PxDx_labeled,df_episodes,PxDx_df_cup, PxDx_tracking_status,PxDx_connection_status,PxDx_reminder, username,date)
-    
     plt.show()
 except IndexError:
     print (PxDx_tracking_status)
@@ -129,19 +128,20 @@ get_day_drink_stats(df_episodes_cup)
 #mean_water_break_duration = df_episodes_cup[df_episodes_cup['transition_from']==]
 #df_episodes_cup.groupby('transition_from').count()
 #df_episodes_cup['last_episode_duration'].sum()
+print (connection_status)
 #%%    
 tracking_summary_by_day = pd.DataFrame()
 full_alert_df =pd.DataFrame() 
 
-for user_id in [30,31,32,35,37,38,39,41,42,50,51,52,53,58,55]:#
+for user_id in [30,31,32,35,37,38,39,41,42,50,51,52,54,55,58]:
     unique_date_list1 = CPE_df[(CPE_df['user_id']==user_id)& (CPE_df['deviceType']==0)].date.unique()
     unique_date_list2 = tracking_status[(tracking_status['user_id']==user_id)].date.unique()
     unique_date_set = pd.to_datetime((np.union1d(unique_date_list1,unique_date_list2)))
     start_date = unique_date_set[0] 
     for date in unique_date_set:
-        #remove out-of-office days; 
-        if (user_id == 42) or (user_id == 52):
-            hld = pd.to_datetime(pd.date_range('2017-12-25','2018-01-08')).tolist()
+        #remove known out-of-office days; 
+        if (user_id == 42) or (user_id == 52) or (user_id == 50):
+            hld = pd.date_range('2017-12-25','2018-01-08').tolist()+pd.date_range('2018-03-30','2018-4-03').tolist()
             bdd = np.busdaycalendar(weekmask = '1111000', holidays=hld)
         elif user_id == 39:
             hld = pd.date_range('2017-12-25','2018-01-07').tolist()+pd.date_range('2017-12-03','2017-12-08').tolist()
@@ -149,18 +149,28 @@ for user_id in [30,31,32,35,37,38,39,41,42,50,51,52,53,58,55]:#
         elif user_id == 32:
             hld = pd.date_range('2017-12-08','2018-01-07').tolist()
             bdd = np.busdaycalendar(holidays=hld)
+        elif user_id == 58:
+            hld = pd.date_range('2018-2-19','2018-2-20').tolist()+pd.date_range('2018-03-14','2018-3-15').tolist()+pd.date_range('2018-03-30','2018-4-03').tolist()
+            bdd = np.busdaycalendar(holidays=hld)
+        elif user_id == 55:
+            hld = pd.date_range('2018-03-30','2018-4-03').tolist()+pd.date_range('2018-04-09','2018-04-13').tolist()
+            bdd = np.busdaycalendar(holidays=hld)
         else:
-            hld = pd.to_datetime(pd.date_range('2017-12-25','2018-01-02')).tolist()
+            hld = pd.date_range('2017-12-25','2018-01-02').tolist()+pd.date_range('2018-03-30','2018-4-03').tolist()
             bdd = np.busdaycalendar(holidays=hld)
         day_num = np.busday_count(start_date,date, busdaycal = bdd)
         
         try: 
             PxDx_tracking_status = tracking_status[(tracking_status['user_id']==user_id)&(tracking_status['date']==date)]
             turn_on = PxDx_tracking_status[(tracking_status['status']=='t')]['timestamp'].iloc[0].time()
+        except IndexError:
+            turn_on = np.nan
+            
+        try: 
+            PxDx_tracking_status = tracking_status[(tracking_status['user_id']==user_id)&(tracking_status['date']==date)]
             turn_off = PxDx_tracking_status[(tracking_status['status']=='f')]['timestamp'].iloc[-1].time()
             #baseline= {'lite':PxDx_tracking_status.lite.iloc[0]}
         except IndexError:
-            turn_on = np.nan
             turn_off = np.nan
             
         PxDx_df = retrieve(CPE_df, user_id,0,date)
@@ -178,6 +188,7 @@ for user_id in [30,31,32,35,37,38,39,41,42,50,51,52,53,58,55]:#
             baseline= {'lite':PxDx_df.lite[0]}
             PxDx_df_filled = fill_gaps(PxDx_df) # return a filled df
             output = classify_a_day(PxDx_df_filled)
+            #PxDx_labeled = output [0]
             df_episodes =output[1].rename(columns ={'current_epoch_end':'current_episode_end','label':'transition_to'})
             df_episodes.reset_index(drop = True,inplace=True)
             df_episodes['transition_to'].iloc[-1]=1 # leave office 
@@ -193,10 +204,12 @@ for user_id in [30,31,32,35,37,38,39,41,42,50,51,52,53,58,55]:#
                 day_drink_summary= get_day_drink_stats(df_episodes_cup)
                 sum_dict= {**sum_dict,**day_drink_summary}
             PxDx_reaction_df= df_episodes[['current_episode_end','transition_to']]
-            PxDx_reaction_df = df_episodes[df_episodes['transition_to']==1]  
+            PxDx_reaction_df = df_episodes[df_episodes['transition_to']==1]
+            #PxDx_invalid_transition = df_episodes[(df_episodes['transition_to']==-1)|(df_episodes['transition_from']==-1)]
+       
             try:
                 #TO-DO: remove invalid tracking period: add a 'label' column to PxDx_alert , take the value from the nearest row (and less than 5 min away) in PxDx_df_labeled
-                #TO-DO: if 'reaction time' is the same as the previous row, remove 
+                #TO-DO: if 'response_latency' > 1 hours AND next transition_to is '-1
                 PxDx_alert = reminder[(reminder['user_id']==user_id)&(reminder['date']==date)]
                 PxDx_alert ['reminder'] = PxDx_alert['action'].apply(convert_reminder_type)
                 #PxDx_alert.reset_index(inplace=True,drop=True)
@@ -209,11 +222,14 @@ for user_id in [30,31,32,35,37,38,39,41,42,50,51,52,53,58,55]:#
                 for index, row in PxDx_alert.iterrows():
                     reminder_time = row['timestamp']
                     reaction_time=np.datetime64('NaT')
+                    
                     try:
                         reaction_time = PxDx_reaction_df[PxDx_reaction_df['current_episode_end']>reminder_time].reset_index()['current_episode_end'].iloc[0]
+                        #invalid_point = PxDx_invalid_transition[PxDx_invalid_transition['current_episode_end']>reminder_time].reset_index()['current_episode_end'].iloc[0]
                     except IndexError:
-                        raise
+                        raise                    
                     PxDx_alert.set_value(index,'reaction',reaction_time)
+                    
                 PxDx_alert['response_latency']=PxDx_alert['reaction']-PxDx_alert['timestamp']
                 PxDx_alert['reaction_to_the_next_reminder']=PxDx_alert['reaction'].shift(-1)
                 PxDx_alert['unique_reaction']=PxDx_alert['reaction_to_the_next_reminder']!=PxDx_alert['reaction']
@@ -236,6 +252,7 @@ for user_id in [30,31,32,35,37,38,39,41,42,50,51,52,53,58,55]:#
 #tracking_summary_by_day['% prolonged sitting']=tracking_summary_by_day['total prolonged sitting']/tracking_summary_by_day['daily valid']
 #tracking_summary_by_day['healthy sitting']=tracking_summary_by_day['daily inactive']-tracking_summary_by_day['total prolonged sitting']
 tracking_summary_by_day['lite'] = tracking_summary_by_day['lite'].fillna(method='ffill')
+tracking_summary_by_day['reminders_triggered']=tracking_summary_by_day['reminders_triggered'].fillna(value=0)
 #tracking_summary_by_day.sort_values('total prolonged sitting',inplace=True)
 tracking_summary_by_day=tracking_summary_by_day[['user_id','start_date','date','day','lite','Turn_ON','first_reading','Turn_OFF','last_reading','daily invalid',
                                                 'daily valid','daily active','daily inactive',
@@ -243,13 +260,8 @@ tracking_summary_by_day=tracking_summary_by_day[['user_id','start_date','date','
                                                 'prolonged sitting events','longest sitting','reminders_triggered','response_latency',
                                                 'drink_event_count','water_break_count','total_water_break_duration','median_drink_frequency']]#
 
-tracking_summary_by_day.applymap(lambda x: str(x)[7:] if type(x)==pd._libs.tslib.Timedelta else (x if type(x) == pd.Series else ('' if pd.isnull(x) else x))).to_csv("../output/tracking_summary_by_day.csv",sep=',',index=False)
+tracking_summary_by_day.applymap(lambda x: str(x)[7:] if type(x)==pd._libs.tslib.Timedelta else (x if type(x) == pd.Series else ('' if pd.isnull(x) else x))).to_csv("../output/tracking_summary_by_day_phaseII.csv",sep=',',index=False)
 summary_of_valid_days = tracking_summary_by_day[(tracking_summary_by_day['daily valid']>timedelta(hours = 3))]
 summary_of_valid_days.applymap(lambda x: str(x)[7:] if type(x)==pd._libs.tslib.Timedelta else x).to_csv("../output/valid_days_only.csv",sep=',',index=False)
 full_alert_df.applymap(lambda x: str(x)[7:] if type(x)==pd._libs.tslib.Timedelta else ('' if pd.isnull(x) else x)).to_csv("../output/reminders.csv",sep=',',index=False)
 #%%
-
-
-
-
-
