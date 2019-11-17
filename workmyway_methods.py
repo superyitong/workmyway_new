@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+7# -*- coding: utf-8 -*-
 import pandas as pd
 import numpy as np
 from datetime import datetime as dt
@@ -14,7 +14,13 @@ matplotlib.rcParams.update({'font.size': 10})
 auth_user_df=pd.read_csv('./data/auth_user.csv')
 dict_account = auth_user_df.set_index('id')['username'].to_dict()
 
-# retrieve the df for a certain user, on a certain day, on a certain device
+def convert_to_minutes(t):
+    if type(t)==pd._libs.tslib.Timedelta:
+        return t.seconds/60
+    else:
+        return t
+
+
 def convert_to_epoch_end(timestamp):
     the_date = dt.strptime(timestamp[:10], '%Y-%m-%d')
     tm = dt.strptime(timestamp [:19], '%Y-%m-%d %H:%M:%S')
@@ -70,13 +76,16 @@ def clean_data(CPE_df):
     CPE_df['filter5']=(CPE_df['user_id']==41)&((CPE_df['date']=='2017-11-11')|(CPE_df['date']=='2017-11-24'))
     CPE_df['filter6']=(CPE_df['user_id']==42)&((CPE_df['date']=='2017-11-22')|(CPE_df['date']=='2017-11-11')|((CPE_df['date']=='2017-11-29')&(CPE_df['current_epoch_end']<'2017-11-29 06:00:00')))
     CPE_df['filter7']=(CPE_df['user_id']==39)&((CPE_df['date']=='2017-11-23')|(('2017-11-29'<CPE_df['date'])&(CPE_df['date'] < '2017-12-07')))
-    CPE_df = CPE_df[(CPE_df ["filter2"]==False)&(CPE_df['filter1']== False)&(CPE_df['filter3']== False)&(CPE_df['filter4']== False)&(CPE_df['filter5']==False)&(CPE_df['filter6']==False)&(CPE_df['filter7']==False)&(CPE_df['filter8']==False)&(CPE_df['filter9']==False)].drop(['filter2','filter1', 'filter3','filter4','filter5','filter6','filter7','filter8','filter9'],axis = 1)   
+    CPE_df['filter10']=(CPE_df['user_id']==54)&((('2017-3-29'<CPE_df['date'])&(CPE_df['date'] < '2018-4-4')))
+    CPE_df['filter11']=(CPE_df['user_id']==53)&(((CPE_df['date']<'2018-2-28')&(CPE_df['lite'] =='f')))
+    CPE_df = CPE_df[(CPE_df ["filter2"]==False)&(CPE_df['filter1']== False)&(CPE_df['filter3']== False)&(CPE_df['filter4']== False)&(CPE_df['filter5']==False)&(CPE_df['filter6']==False)&(CPE_df['filter7']==False)&(CPE_df['filter8']==False)&(CPE_df['filter9']==False)&(CPE_df['filter10']==False)&(CPE_df['filter11']==False)].\
+    drop(['filter2','filter1', 'filter3','filter4','filter5','filter6','filter7','filter8','filter9','filter10','filter11'],axis = 1)   
     CPE_df=CPE_df.reset_index(drop=True)
     
     return CPE_df
 
 
-    
+   # retrieve the df for a certain user, on a certain day, on a certain device 
 def retrieve(original_df, user_id,device,date):
     df = original_df[(original_df['user_id']==user_id) & (original_df['deviceType']== device) &(original_df['date']== date)].drop(['date'],axis =1)
     df['difference']= df ['current_epoch_end'].diff()
@@ -105,7 +114,7 @@ def get_wear_time(PxDx):
 def fill_gaps (PxDx): 
     if type(PxDx) == pd.DataFrame:
         ts = pd.date_range(PxDx.index.values[0],PxDx.index.values[-1], freq='15S')
-        ts = pd.Series([0], index=ts)
+        ts = pd.Series(0, index=ts)
         base_df = pd.DataFrame({'CPE':ts})
         df2 = PxDx.drop(['user_id','deviceType','lite','valid_wear','difference'],axis = 1)
         return base_df.add(df2,fill_value=0)    
@@ -129,8 +138,8 @@ def classify_a_day(PxDx): #to-do: change duration calculation and plot to using 
     if type(PxDx) == pd.DataFrame:
         C1 = 5
         x = 6
-        C0 = 23
-        P = 25
+        C0 = 25
+        P = 36
         Q= 2
         
         df_episodes= pd.DataFrame()
@@ -226,7 +235,7 @@ def classify_cup_movement(PxDx): #to-do: change duration calculation and plot to
         x = 20 # end of drink 
         C0 = 0 # drink detection threshold 
         P = 15 # walk detection threshold 
-        Q= 2
+        Q= 2 # walk detection 
         
         df_episodes= pd.DataFrame()
         #df_episodes.set_value(0,'episode_start', "2017-10-24 14:55:15")
@@ -253,6 +262,7 @@ def classify_cup_movement(PxDx): #to-do: change duration calculation and plot to
                         for i in range (Q):
                             CPE_df.set_value(index-i, 'label', 2) #set [index-3:index+1] row as active
                             CPE_df.set_value(index-i,'note','walk with cup')
+                    # if not walking but movement detected
                     elif(row['CPE']> C0): 
                         CPE_df.set_value(index, 'transition_from', 0)
                         CPE_df.set_value(index, 'label', 1 )

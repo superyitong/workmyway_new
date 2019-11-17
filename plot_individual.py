@@ -9,7 +9,7 @@ from workmyway_methods import (fill_gaps, office_hour, drop_non_office_hour, cla
                                  parse_datetime,clean_data, convert_reminder_type)
 
 #####  read data and conver data types ########
-raw_count = pd.read_csv("./data/smartcup_server_stepreading2.csv")
+raw_count = pd.read_csv("./data/smartcup_server_stepreading.csv")
 raw_count['date']=raw_count['timestamp'].apply(parse_date)
 raw_count = raw_count[raw_count.date>datetime(2017,10,25)]
 raw_count['current_epoch_end'] = raw_count['timestamp'].apply(convert_to_epoch_end)
@@ -67,10 +67,9 @@ tracking_status.loc[((tracking_status['user_id']==54) & (tracking_status['date']
 reminder.loc[((reminder['user_id']==54) & (reminder['date']<'2018-03-15')),'user_id']=58
 
 
-
 #%%
-user_id = 55
-date = '2018-4-16'
+user_id =30
+date = '2018-02-16'
 username = dict_account[user_id]
 PxDx_tracking_status = tracking_status[(tracking_status['user_id']==user_id)&(tracking_status['date']==date)]
 PxDx_tracking_status['start_tracking']= np.where(PxDx_tracking_status['status']=='t',1.5,np.nan)
@@ -84,11 +83,11 @@ PxDx_connection_status ['cup_connected']= np.where((PxDx_connection_status['conn
 PxDx_connection_status ['cup_disconnected']= np.where((PxDx_connection_status['connected']=='f')&(PxDx_connection_status['deviceType']==1),1.4,np.nan)
 PxDx_connection_status = PxDx_connection_status.set_index('timestamp',drop=True)
 
+
 PxDx_reminder = reminder[(reminder['user_id']==user_id)&(reminder['date']==date)]
 PxDx_reminder['reminder'] = PxDx_reminder['action'].apply(convert_reminder_type)
 #PxDx_reminder['snooze']= PxDx_reminder['action'].apply(lambda x: 1.3 if (x[:5]=='pause') else np.nan)
 PxDx_reminder = PxDx_reminder.set_index('timestamp',drop=True)
-
 
 PxDx_df = retrieve(CPE_df, user_id,0,date)
 PxDx_df_cup = retrieve(CPE_df, user_id,1,date)
@@ -104,15 +103,17 @@ try:
     PxDx_labeled = output[0].rename(columns = {'label':'activity status'})
     #draw(PxDx_labeled,df_episodes,PxDx_tracking_status,username,date)
     plot_a_day(PxDx_labeled,df_episodes,PxDx_df_cup, PxDx_tracking_status,PxDx_connection_status,PxDx_reminder, username,date)
-    
     plt.show()
 except IndexError:
     print (PxDx_tracking_status)
 
+try:
+   output_cup = classify_cup_movement(fill_gaps(PxDx_df_cup))
+   PxDx_labeled_cup = output_cup[0].rename(columns = {'label':'activity status'})
+   df_episodes_cup = output_cup[1].rename(columns = {'current_epoch_end':'current_episode_end','label':'transition_to'})
+   df_episodes_cup.reset_index(drop = True,inplace=True)
+   df_episodes_cup['last_episode_duration']=df_episodes_cup['current_episode_end'].diff(1)
+   print(get_day_drink_stats(df_episodes_cup))
+except:
+    pass
 
-#%%
-output_cup = classify_a_day(fill_gaps(PxDx_df_cup))   
-PxDx_labeled_cup = output_cup[0].rename(columns = {'label':'activity status'})
-df_episodes_cup = output_cup[1].rename(columns = {'current_epoch_end':'current_episode_end','label':'transition_to'})
-df_episodes_cup.reset_index(drop = True,inplace=True)
-df_episodes_cup['last_episode_duration'] = df_episodes_cup['current_episode_end']-df_episodes_cup['current_episode_end'].shift(1)
